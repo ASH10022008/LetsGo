@@ -1,7 +1,85 @@
-Campus & City Transit Tracking Web ApplicationA lightweight, real-time web application designed for educational campuses and city routes. It provides a frictionless dual-interface system: a mobile-first portal for bus drivers to authenticate via phone and stream live GPS coordinates, and an interactive dashboard for students/parents to track buses live, view upcoming stops, and analyze historical delay trends.🚀 Key FeaturesFrictionless Driver Onboarding: Scan a QR code on the bus, input phone number and assigned route, and verify via SMS OTP.Live Real-Time Tracking: WebSocket-powered location streaming from the driver's browser GPS to student browsers.Minimalist Student Map: Clean, distraction-free map interface featuring live moving red bus markers.Favorite Routes & Stop Cards: Star top 3 favorite routes with dynamic "Next Stop" and "Last Stop" status cards.Efficiency Analytics Graph: Visualizes historical delay trends ($\text{Delay} \times \text{Days}$) to help students choose faster alternative routes during peak hours.🛠️ Tech StackBackend: Python + FastAPI (handling REST endpoints and async WebSockets)Database & Storage: PostgreSQL + PostGIS (for spatial and time-series delay logs)Frontend: HTML5, Tailwind CSS, JavaScript (Vanilla/PWA style)Mapping & Charts: Leaflet.js (for interactive transit maps) & Chart.js (for analytics)👥 Team Responsibilities & Task DivisionThe project is split into two independent workstreams to allow parallel development:Team Member 1: Backend, Real-Time Pipelines & DataDriver Authentication & Security: Build API endpoints for phone number verification, database credential matching, and OTP generation/validation.Real-Time Engine (WebSockets): Set up the FastAPI WebSocket server to handle continuous, low-latency GPS coordinate ingestion from active driver sessions.Database Schema Design: Design and manage PostgreSQL tables for buses, active driver sessions, route stops, and historical telemetry.ETA & Delay Engine: Implement the backend logic that calculates schedule variance (delay in minutes) when a bus checkpoints at a scheduled stop.Team Member 2: Frontend, Maps & UI DashboardDriver PWA Interface: Build the mobile-friendly login screen (QR scan, phone input, OTP screen) and the active shift dashboard with a "Start/End Trip" tracking toggle.Student Interactive Map: Integrate Leaflet.js with custom vector layers to display live-moving red bus markers.Student UI Dashboard: Develop the "Top 3 Favourite Routes" bookmarking feature and dynamic "Next Stop / Destination" status cards.Analytics Visualization: Integrate Chart.js to render historical delay trends and comparison charts for alternative routes.📋 Getting Started (Local Development)Clone the Repository:git clone https://github.com/your-username/campus-transit-app.git
-cd campus-transit-app
-Backend Setup (Team Member 1):cd backend
+# Campus & City Transit Tracking Web Application
+
+A lightweight, real-time web application designed for educational campuses and city transit systems. The platform provides a streamlined dual-interface experience for users who need quick access to live transit information, route visibility, and schedule updates across both campus and urban environments.
+
+## Overview
+
+This project is built to help commuters, students, and transit stakeholders track vehicles in real time, monitor route movement, and improve overall transportation efficiency. It combines a responsive frontend interface with a backend API to support live data handling and route visibility.
+
+## Key Features
+
+- Real-time transit tracking for campus and city routes
+- Dual-interface design optimized for users on different devices
+- Easy access to route information and service status
+- Lightweight architecture for quick deployment and use
+- Simple setup for local development and testing
+
+## Tech Stack
+
+- Frontend: HTML, CSS, JavaScript
+- Backend: Python, FastAPI
+- Server: Uvicorn
+- Local development: static frontend hosting or browser preview
+
+## Project Structure
+
+```bash
+campus-transit-app/
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   └── ...
+├── frontend/
+│   ├── index.html
+│   ├── styles.css
+│   ├── script.js
+│   └── ...
+├── README.md
+└── .gitignore
+```
+
+## Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/ASH10022008/LetsGo.git
+cd LetsGo
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload
-Frontend Setup (Team Member 2):cd frontend
-# Open index.html or serve using a local static server (e.g., Live Server)
+```
+
+The backend will start locally and serve the application API.
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+```
+
+Open `index.html` in a browser, or serve the frontend using a local static server such as Live Server.
+
+## Usage
+
+- Launch the backend server.
+- Open the frontend application.
+- View available routes and real-time movement details.
+- Use the interface to monitor transit status and support campus or city travel planning.
+
+## Team
+
+This project is structured for collaborative development, with separate responsibilities for backend and frontend work.
+
+## License
+
+This project is currently distributed for educational and development purposes. Please review the repository for any additional licensing information before production deployment.
+
+## Contact
+
+For questions or collaboration inquiries, please contact the project maintainers through the repository owner or relevant team communication channel.
