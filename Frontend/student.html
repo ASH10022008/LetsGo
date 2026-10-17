@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Transit - Student Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center shadow-md">
+        <div>
+            <h1 class="text-lg font-bold text-emerald-400">Campus Transit</h1>
+            <p class="text-xs text-slate-400">Live Tracking & Analytics</p>
+        </div>
+        <div id="connection-status" class="text-xs px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            Connecting...
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow p-4 max-w-4xl w-full mx-auto space-y-4">
+
+        <!-- Top 3 Favorite Routes Filter Bar -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between shadow-lg">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Favorite Routes:</span>
+            <div id="favorites-container" class="flex gap-2">
+                <!-- Dynamically populated or toggleable pills -->
+                <button onclick="toggleFavorite('RT-1')" id="fav-RT-1" class="px-3 py-1 rounded-lg text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600 hover:border-emerald-500 transition">RT-1</button>
+                <button onclick="toggleFavorite('RT-5')" id="fav-RT-5" class="px-3 py-1 rounded-lg text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600 hover:border-emerald-500 transition">RT-5</button>
+                <button onclick="toggleFavorite('RT-12')" id="fav-RT-12" class="px-3 py-1 rounded-lg text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600 hover:border-emerald-500 transition">RT-12</button>
+            </div>
+        </div>
+
+        <!-- Leaflet Map Container -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
+            <div id="map" class="w-full h-72 sm:h-96 z-10"></div>
+        </div>
+
+        <!-- Next Stop & Last Stop Status Panel -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+                <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">Last Passed Checkpoint</span>
+                <p id="last-stop" class="text-sm font-bold text-slate-300 mt-1">--</p>
+            </div>
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+                <span class="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider block">Next Stop & ETA</span>
+                <p id="next-stop" class="text-sm font-bold text-emerald-400 mt-1">-- (ETA: --)</p>
+            </div>
+        </div>
+
+        <!-- Delay vs. Days Analytics Graph -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-200">7-Day Route Delay Trend</h3>
+                <span class="text-xs text-slate-400">Cumulative Minutes</span>
+            </div>
+            <div class="h-48">
+                <canvas id="delayChart"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center p-3 text-xs text-slate-500 border-t border-slate-800">
+        Campus Transit MVP &bull; Student Client
+    </footer>
+
+    <!-- Script Logic -->
+    <script>
+        // 1. Initialize Leaflet Map (Centered on a sample campus/city area)
+        const map = L.map('map').setView([17.3850, 78.4867], 13); // Default Hyderabad coords
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let busMarkers = {}; // Store markers per bus_id
+
+        // 2. LocalStorage Favorite Routes Logic
+        let favorites = JSON.parse(localStorage.getItem('campus_transit_favs')) || ['RT-5'];
+        updateFavoriteUI();
+
+        function toggleFavorite(routeId) {
+            if (favorites.includes(routeId)) {
+                favorites = favorites.filter(id => id !== routeId);
+            } else {
+                if (favorites.length >= 3) {
+                    alert("You can pin a maximum of 3 favorite routes.");
+                    return;
+                }
+                favorites.push(routeId);
+            }
+            localStorage.setItem('campus_transit_favs', JSON.stringify(favorites));
+            updateFavoriteUI();
+        }
+
+        function updateFavoriteUI() {
+            ['RT-1', 'RT-5', 'RT-12'].forEach(id => {
+                const btn = document.getElementById(`fav-${id}`);
+                if (favorites.includes(id)) {
+                    btn.className = "px-3 py-1 rounded-lg text-xs font-medium bg-emerald-600 text-white border border-emerald-500 transition shadow-md";
+                } else {
+                    btn.className = "px-3 py-1 rounded-lg text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600 hover:border-emerald-500 transition";
+                }
+            });
+        }
+
+        // 3. WebSocket Real-Time Listener
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.hostname}:8000/ws/student`;
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.innerText = "Live Stream Connected";
+            statusEl.className = "text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+        };
+
+        ws.onclose = () => {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.innerText = "Disconnected";
+            statusEl.className = "text-xs px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            // Expected payload format: { bus_id: "...", lat: 17.38, lng: 78.48, next_stop: "...", last_stop: "..." }
+            const { bus_id, lat, lng, next_stop, last_stop, eta } = data;
+
+            // Update Map Marker
+            if (busMarkers[bus_id]) {
+                busMarkers[bus_id].setLatLng([lat, lng]);
+            } else {
+                // Custom Red Bus Icon representation
+                const busIcon = L.divIcon({
+                    className: 'custom-bus-icon',
+                    html: '<div style="background-color: #ef4444; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; font-weight: bold;">🚌</div>',
+                    iconSize: [24, 24]
+                });
+                busMarkers[bus_id] = L.marker([lat, lng], { icon: busIcon }).addTo(map)
+                    .bindPopup(`<b>Bus ID: ${bus_id}</b>`);
+            }
+
+            // Update status panel if data provided
+            if (last_stop) document.getElementById('last-stop').innerText = last_stop;
+            if (next_stop) document.getElementById('next-stop').innerText = `${next_stop} (ETA: ${eta || '5 mins'})`;
+        };
+
+        // 4. Chart.js Analytics Initialization
+        const ctx = document.getElementById('delayChart').getContext('2d');
+        const delayChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Cumulative Delay (mins)',
+                    data: [12, 5, 18, 8, 3, 10, 6],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
